@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnimeLog - Tu Registro de Anime</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            900: '#4c1d95',
+                        },
+                        darkbg: '#0f172a',
+                        darkcard: '#1e293b',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Glassmorphism effects */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-modal {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        /* Card hover animation */
+        .anime-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .anime-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -10px rgba(139, 92, 246, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-30 glass-panel border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <!-- Logo -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-play text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-brand-500 bg-clip-text text-transparent">
+                        AnimeLog
+                    </h1>
+                    <p class="text-[10px] text-emerald-400 font-medium tracking-widest uppercase flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Firebase Realtime
+                    </p>
+                </div>
+            </div>
+
+            <!-- Stats Header -->
+            <div class="hidden md:flex items-center gap-6 text-sm text-slate-400 border-l border-r border-slate-800 px-6 py-1">
+                <div class="text-center">
+                    <span id="stat-total" class="block font-bold text-slate-100 text-base">0</span>
+                    <span class="text-[11px] uppercase tracking-wider">Total</span>
+                </div>
+                <div class="text-center">
+                    <span id="stat-watching" class="block font-bold text-amber-400 text-base">0</span>
+                    <span class="text-[11px] uppercase tracking-wider">Viendo</span>
+                </div>
+                <div class="text-center">
+                    <span id="stat-completed" class="block font-bold text-emerald-400 text-base">0</span>
+                    <span class="text-[11px] uppercase tracking-wider">Completados</span>
+                </div>
+            </div>
+
+            <!-- Header Actions -->
+            <div class="flex items-center gap-2">
+                <button id="btn-open-modal" onclick="openAnimeModal()" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-sm flex items-center gap-2 transition-all shadow-md shadow-brand-600/30 active:scale-95">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span class="hidden sm:inline">Agregar Anime</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+
+        <!-- Controls Bar: Search & Filters -->
+        <section class="flex flex-col md:flex-row gap-4 justify-between items-center glass-panel p-4 rounded-2xl">
+            <!-- Search Box -->
+            <div class="relative w-full md:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="search-input" placeholder="Buscar por título..." oninput="renderAnimes()"
+                    class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all">
+            </div>
+
+            <!-- Filter Pills -->
+            <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none" id="status-filters">
+                <button onclick="setFilter('todos')" data-filter="todos" class="filter-btn active-filter px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-wide whitespace-nowrap transition-all bg-brand-600 text-white">
+                    Todos
+                </button>
+                <button onclick="setFilter('Viendo')" data-filter="Viendo" class="filter-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-wide whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:text-slate-200">
+                    Viendo
+                </button>
+                <button onclick="setFilter('Completado')" data-filter="Completado" class="filter-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-wide whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:text-slate-200">
+                    Completados
+                </button>
+                <button onclick="setFilter('Pendiente')" data-filter="Pendiente" class="filter-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-wide whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:text-slate-200">
+                    Pendientes
+                </button>
+                <button onclick="setFilter('En pausa')" data-filter="En pausa" class="filter-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-wide whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:text-slate-200">
+                    Pausados
+                </button>
+                <button onclick="setFilter('Abandonado')" data-filter="Abandonado" class="filter-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-wide whitespace-nowrap transition-all bg-slate-800 text-slate-400 hover:text-slate-200">
+                    Abandonados
+                </button>
+            </div>
+        </section>
+
+        <!-- Anime List Grid -->
+        <section id="anime-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+            <!-- Anime Cards inyectadas desde Firebase -->
+        </section>
+
+        <!-- Empty State (Oculto por defecto) -->
+        <div id="empty-state" class="hidden text-center py-16 px-4 glass-panel rounded-3xl">
+            <div class="w-16 h-16 bg-slate-800/80 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-500 text-2xl">
+                <i class="fa-solid fa-tv"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-200">No hay animes registrados en la base de datos</h3>
+            <p class="text-sm text-slate-400 max-w-md mx-auto mt-1 mb-6">Empieza agregando tus animes para guardarlos en tiempo real.</p>
+            <button onclick="openAnimeModal()" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-sm inline-flex items-center gap-2 transition-all">
+                <i class="fa-solid fa-plus text-xs"></i> Registrar Mi Primer Anime
+            </button>
+        </div>
+    </main>
+
+    <!-- Modal Form (Crear / Editar) -->
+    <div id="modal-anime" class="fixed inset-0 z-50 hidden glass-modal flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-8 transform transition-all">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                <h3 id="modal-title" class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-film text-brand-500"></i> Registrar Anime
+                </h3>
+                <button onclick="closeAnimeModal()" class="text-slate-400 hover:text-slate-200 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="anime-form" onsubmit="handleSaveAnime(event)" class="p-6 space-y-4">
+                <input type="hidden" id="anime-id">
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Título del Anime *</label>
+                    <input type="text" id="anime-title" required placeholder="Ej: Attack on Titan, Jujutsu Kaisen..." 
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500">
+                </div>
+
+                <!-- Status & Rating -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Estado</label>
+                        <select id="anime-status" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:border-brand-500">
+                            <option value="Viendo">Viendo</option>
+                            <option value="Completado">Completado</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En pausa">En pausa</option>
+                            <option value="Abandonado">Abandonado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Calificación (1 - 10)</label>
+                        <input type="number" id="anime-rating" min="0" max="10" step="0.5" placeholder="8.5" 
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:border-brand-500">
+                    </div>
+                </div>
+
+                <!-- Chapters Progress -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Capítulo Actual *</label>
+                        <input type="number" id="anime-current-ep" min="0" required value="0"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Total Capítulos</label>
+                        <input type="number" id="anime-total-ep" min="0" placeholder="Ej: 12, 24" 
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:border-brand-500">
+                    </div>
+                </div>
+
+                <!-- Cover Image URL -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">URL Portada / Poster (Opcional)</label>
+                    <input type="url" id="anime-image" placeholder="https://ejemplo.com/imagen.jpg" 
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-brand-500">
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Notas Personales</label>
+                    <textarea id="anime-notes" rows="2" placeholder="Opinión rápida, temporada o comentarios..." 
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-brand-500 resize-none"></textarea>
+                </div>
+
+                <!-- Form Buttons -->
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeAnimeModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium transition-all shadow-md shadow-brand-600/30">
+                        Guardar Anime
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 hidden transition-all duration-300 transform translate-y-2">
+        <div class="px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 shadow-2xl flex items-center gap-3 text-sm">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+            <span id="toast-message">Acción completada con éxito.</span>
+        </div>
+    </div>
+
+    <!-- JavaScript con Firebase integrado -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Configuración oficial tomada de tu consola de Firebase
+        const firebaseConfig = {
+            apiKey: "AizaSyAUyZ8GrDfVo9U4Y-0Yq4eSsQYca09IjMA",
+            authDomain: "progreso-anime.firebaseapp.com",
+            databaseURL: "https://progreso-anime-default-rtdb.firebaseio.com",
+            projectId: "progreso-anime",
+            storageBucket: "progreso-anime.firebasestorage.app",
+            messagingSenderId: "611845699336",
+            appId: "1:611845699336:web:fb1a270ead6cc5f27elebd"
+        };
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const animeRef = ref(db, 'animes');
+
+        let animeData = {};
+        let currentFilter = 'todos';
+
+        // Escuchar datos en tiempo real de Firebase
+        onValue(animeRef, (snapshot) => {
+            animeData = snapshot.val() || {};
+            renderAnimes();
+        });
+
+        // Función para renderizar tarjetas
+        window.renderAnimes = function() {
+            const grid = document.getElementById('anime-grid');
+            const emptyState = document.getElementById('empty-state');
+            const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+
+            grid.innerHTML = '';
+
+            const keys = Object.keys(animeData);
+
+            // Filtrado de elementos
+            const filteredKeys = keys.filter(id => {
+                const anime = animeData[id];
+                const matchesFilter = currentFilter === 'todos' || anime.status === currentFilter;
+                const matchesSearch = anime.title.toLowerCase().includes(searchQuery);
+                return matchesFilter && matchesSearch;
+            });
+
+            if (filteredKeys.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+
+                filteredKeys.forEach(id => {
+                    const anime = animeData[id];
+                    const total = parseInt(anime.totalEp) || 0;
+                    const current = parseInt(anime.currentEp) || 0;
+                    const progressPercent = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
+                    
+                    const poster = anime.image && anime.image.trim() !== '' 
+                        ? anime.image 
+                        : `https://placehold.co/400x600/1e293b/8b5cf6?text=${encodeURIComponent(anime.title)}`;
+
+                    const cardHtml = `
+                        <div class="anime-card glass-panel rounded-2xl overflow-hidden flex flex-col h-full border border-slate-800/80 group">
+                            <!-- Header de Imagen -->
+                            <div class="relative aspect-[3/4] w-full overflow-hidden bg-slate-900">
+                                <img src="${poster}" alt="${anime.title}" 
+                                     onerror="this.onerror=null; this.src='https://placehold.co/400x600/1e293b/8b5cf6?text=Anime';" 
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-90"></div>
+
+                                <!-- Badge Estado: Fondo Negro y Texto Blanco -->
+                                <span class="absolute top-3 left-3 text-[11px] font-bold px-2.5 py-1 rounded-md bg-black text-white border border-slate-700 shadow-md backdrop-blur-md">
+                                    ${anime.status}
+                                </span>
+
+                                <!-- Badge Calificación -->
+                                ${anime.rating ? `
+                                    <span class="absolute top-3 right-3 bg-slate-950/80 backdrop-blur-md border border-slate-800 text-amber-400 font-bold text-xs px-2 py-1 rounded-md flex items-center gap-1">
+                                        <i class="fa-solid fa-star text-[10px]"></i> ${anime.rating}
+                                    </span>
+                                ` : ''}
+
+                                <!-- Controles Rápidos -->
+                                <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
+                                    <div class="flex items-center bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-xl p-1 gap-1">
+                                        <button onclick="adjustEpisode('${id}', -1)" title="Restar capítulo" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center text-xs transition-colors active:scale-90">
+                                            <i class="fa-solid fa-minus"></i>
+                                        </button>
+                                        <span class="px-2 text-xs font-bold text-slate-100 min-w-[3rem] text-center">
+                                            Ep. ${anime.currentEp}
+                                        </span>
+                                        <button onclick="adjustEpisode('${id}', 1)" title="Sumar capítulo" class="w-7 h-7 rounded-lg bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center text-xs transition-colors active:scale-90">
+                                            <i class="fa-solid fa-plus"></i>
+                                        </button>
+                                    </div>
+
+                                    <!-- Editar y Borrar -->
+                                    <div class="flex gap-1">
+                                        <button onclick="openAnimeModal('${id}')" title="Editar" class="w-8 h-8 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs transition-colors">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </button>
+                                        <button onclick="deleteAnime('${id}')" title="Eliminar" class="w-8 h-8 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 flex items-center justify-center text-xs transition-colors">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Información Principal -->
+                            <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+                                <div>
+                                    <h2 class="font-bold text-slate-100 text-sm line-clamp-1 group-hover:text-brand-400 transition-colors" title="${anime.title}">
+                                        ${anime.title}
+                                    </h2>
+                                    ${anime.notes ? `<p class="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">${anime.notes}</p>` : ''}
+                                </div>
+
+                                <!-- Barra de Progreso -->
+                                <div class="space-y-1">
+                                    <div class="flex justify-between text-[11px] text-slate-400 font-medium">
+                                        <span>Progreso</span>
+                                        <span>${anime.currentEp} / ${total > 0 ? total : '??'} eps ${total > 0 ? `(${progressPercent}%)` : ''}</span>
+                                    </div>
+                                    <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                        <div class="bg-gradient-to-r from-brand-600 to-indigo-400 h-1.5 rounded-full transition-all duration-300" style="width: ${total > 0 ? progressPercent : 100}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    grid.insertAdjacentHTML('beforeend', cardHtml);
+                });
+            }
+
+            updateStats();
+        };
+
+        // Ajustar capitulos (+1 / -1)
+        window.adjustEpisode = function(id, delta) {
+            const anime = animeData[id];
+            if (!anime) return;
+
+            let newEp = parseInt(anime.currentEp) + delta;
+            if (newEp < 0) newEp = 0;
+
+            const total = parseInt(anime.totalEp) || 0;
+            if (total > 0 && newEp > total) newEp = total;
+
+            let status = anime.status;
+
+            if (total > 0 && newEp === total && status !== 'Completado') {
+                status = 'Completado';
+                showToast(`🎉 ¡Completaste ${anime.title}!`);
+            } else if (delta > 0 && status === 'Pendiente') {
+                status = 'Viendo';
+            }
+
+            update(ref(db, `animes/${id}`), {
+                currentEp: newEp,
+                status: status
+            });
+        };
+
+        // Control del Modal
+        window.openAnimeModal = function(id = null) {
+            const modal = document.getElementById('modal-anime');
+            const form = document.getElementById('anime-form');
+            const modalTitle = document.getElementById('modal-title');
+
+            form.reset();
+
+            if (id && animeData[id]) {
+                const anime = animeData[id];
+                modalTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-500"></i> Editar Anime`;
+                document.getElementById('anime-id').value = id;
+                document.getElementById('anime-title').value = anime.title;
+                document.getElementById('anime-status').value = anime.status;
+                document.getElementById('anime-current-ep').value = anime.currentEp;
+                document.getElementById('anime-total-ep').value = anime.totalEp || '';
+                document.getElementById('anime-rating').value = anime.rating || '';
+                document.getElementById('anime-image').value = anime.image || '';
+                document.getElementById('anime-notes').value = anime.notes || '';
+            } else {
+                modalTitle.innerHTML = `<i class="fa-solid fa-film text-brand-500"></i> Registrar Anime`;
+                document.getElementById('anime-id').value = '';
+            }
+
+            modal.classList.remove('hidden');
+        };
+
+        window.closeAnimeModal = function() {
+            document.getElementById('modal-anime').classList.add('hidden');
+        };
+
+        // Guardar o Editar Anime en Firebase
+        window.handleSaveAnime = function(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('anime-id').value;
+            const title = document.getElementById('anime-title').value.trim();
+            const status = document.getElementById('anime-status').value;
+            const currentEp = parseInt(document.getElementById('anime-current-ep').value) || 0;
+            const totalEp = parseInt(document.getElementById('anime-total-ep').value) || 0;
+            const rating = parseFloat(document.getElementById('anime-rating').value) || '';
+            const image = document.getElementById('anime-image').value.trim();
+            const notes = document.getElementById('anime-notes').value.trim();
+
+            const itemData = { title, status, currentEp, totalEp, rating, image, notes };
+
+            if (id) {
+                update(ref(db, `animes/${id}`), itemData);
+                showToast('Anime actualizado en Firebase');
+            } else {
+                push(animeRef, itemData);
+                showToast('Anime guardado en Firebase');
+            }
+
+            closeAnimeModal();
+        };
+
+        // Eliminar de Firebase
+        window.deleteAnime = function(id) {
+            const anime = animeData[id];
+            if (!anime) return;
+
+            if (confirm(`¿Estás seguro de que deseas eliminar "${anime.title}"?`)) {
+                remove(ref(db, `animes/${id}`));
+                showToast('Anime eliminado');
+            }
+        };
+
+        // Filtros
+        window.setFilter = function(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.dataset.filter === filter) {
+                    btn.classList.add('bg-brand-600', 'text-white');
+                    btn.classList.remove('bg-slate-800', 'text-slate-400');
+                } else {
+                    btn.classList.remove('bg-brand-600', 'text-white');
+                    btn.classList.add('bg-slate-800', 'text-slate-400');
+                }
+            });
+            renderAnimes();
+        };
+
+        // Estadísticas
+        function updateStats() {
+            const list = Object.values(animeData);
+            document.getElementById('stat-total').innerText = list.length;
+            document.getElementById('stat-watching').innerText = list.filter(a => a.status === 'Viendo').length;
+            document.getElementById('stat-completed').innerText = list.filter(a => a.status === 'Completado').length;
+        }
+
+        // Toasts
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
